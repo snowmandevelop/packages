@@ -13,16 +13,11 @@ PKG_SOURCE_VERSION:=48a66213fe # SHA1 used within the docker executables
 
 PKG_MAINTAINER:=Gerard Ryan <G.M0N3Y.2503@gmail.com>
 
-# $(1) = path to dependent package 'Makefile'
-# $(2) = relevant docker-ce '.installer' file
-define EnsureVendoredVersion
-	( \
-		DEP_VER=$$$$( grep --only-matching --perl-regexp '(?<=PKG_SOURCE_VERSION:=)(.*)' "$(1)" ); \
-		VEN_VER=$$$$( grep --only-matching --perl-regexp '(?<=_COMMIT:=)(.*)(?=})' "$(PKG_BUILD_DIR)/components/engine/hack/dockerfile/install/$(2)" ); \
-		if [ $$$$VEN_VER != $$$$DEP_VER ]; then \
-			echo "ERROR: Expected 'PKG_SOURCE_VERSION:=$$$$VEN_VER' in '$(1)', found 'PKG_SOURCE_VERSION:=$$$$DEP_VER'"; \
-			exit 1; \
-		fi \
+define CheckExpectedSrcVer
+	$(eval SRC_VER:=$(shell grep --only-matching --perl-regexp '(?<=PKG_SOURCE_VERSION:=)(.*)' $(1)))
+	$(if $(subst $(2),,$(SRC_VER)), \
+		$(error ERROR: Expected $(1) source version '$(2)', found '$(SRC_VER)'), \
+		$(info OK: Expected $(1) source version '$(2)', found '$(SRC_VER)') \
 	)
 endef
 
@@ -61,11 +56,11 @@ endef
 define Build/Prepare
 	$(Build/Prepare/Default)
 
-	# Verify dependencies are the vendored version
-	$(call EnsureVendoredVersion,../containerd/Makefile,containerd.installer)
-	$(call EnsureVendoredVersion,../libnetwork/Makefile,proxy.installer)
-	$(call EnsureVendoredVersion,../runc/Makefile,runc.installer)
-	$(call EnsureVendoredVersion,../tini/Makefile,tini.installer)
+	# values from respective '.installer' files at https://github.com/docker/docker-ce/blob/v$(PKG_VERSION)/components/engine/hack/dockerfile/install/
+	$(eval $(call CheckExpectedSrcVer,../containerd/Makefile,7ad184331fa3e55e52b890ea95e65ba581ae3429))
+	$(eval $(call CheckExpectedSrcVer,../libnetwork/Makefile,9fd385be8302dbe1071a3ce124891893ff27f90f))
+	$(eval $(call CheckExpectedSrcVer,../runc/Makefile,dc9208a3303feef5b3839f4323d9beb36df0a9dd))
+	$(eval $(call CheckExpectedSrcVer,../tini/Makefile,fec3683b971d9c3ef73f284f176672c44b448662))
 endef
 
 define Build/Configure
